@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 
-  <title><![CDATA[Tianyi's blog]]></title>
-  <link href="http://xbox1994.github.io/atom.xml" rel="self"/>
+  <title><![CDATA[Category: 后台技术 | Tianyi's blog]]></title>
+  <link href="http://xbox1994.github.io/blog/categories/hou-tai-ji-zhu/atom.xml" rel="self"/>
   <link href="http://xbox1994.github.io/"/>
   <updated>2016-12-18T17:06:35+08:00</updated>
   <id>http://xbox1994.github.io/</id>
