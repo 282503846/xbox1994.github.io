@@ -5,7 +5,7 @@
 <!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
 <head>
   <meta charset="utf-8">
-  <title>一个NUS的后台 - Tianyi's blog</title>
+  <title>NUS后台 - Tianyi's blog</title>
   <meta name="author" content="Tianyi Wang">
 
   
@@ -19,7 +19,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   
-  <link rel="canonical" href="http://xbox1994.github.io/blog/2016/12/18/%5B%3F%5D-ge-nusde-hou-tai/">
+  <link rel="canonical" href="http://xbox1994.github.io/blog/2016/12/18/nusde-hou-tai/">
   <link href="/favicon.png" rel="icon">
   <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
   <link href="/atom.xml" rel="alternate" title="Tianyi's blog" type="application/atom+xml">
@@ -70,7 +70,7 @@
   
   <header>
     
-      <h1 class="entry-title">一个NUS的后台</h1>
+      <h1 class="entry-title">NUS后台</h1>
     
     
       <p class="meta">
@@ -179,7 +179,7 @@ stdout_path "#{@dir}log/unicorn.stdout.log"
 </code></pre>
 
 <p>以前碰到过的一个问题：不启用nginx和unicorn时，当程序出错，代码中不处理错误而是抛出错误会导致服务器挂掉，似乎sinatra也没有管。
-答案：thin是单线程的，如果thin挂了一次就GG了，unicorn是多线程的，worker_processes有8个哦，如果超时会被kill掉再启动的，每个worker_process只能同时服务一个client，所以并发性能很差，然而thin不这样觉得</p>
+答：thin是单线程的，如果代码不够健壮导致thin挂了一次就无法恢复了，unicorn是多线程的，worker_processes默认有8个哦，如果超时会被kill掉再启动的，每个worker_process只能同时服务一个client，所以并发性能很差</p>
 
 <p>那么问题又来了，单线程如何实现高性能并发处理？
 <a href="https://github.com/eventmachine/eventmachine">https://github.com/eventmachine/eventmachine</a></p>
@@ -222,7 +222,7 @@ stdout_path "#{@dir}log/unicorn.stdout.log"
     
       <div class="sharing">
   
-  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://xbox1994.github.io/blog/2016/12/18/%5B%3F%5D-ge-nusde-hou-tai/" data-via="" data-counturl="http://xbox1994.github.io/blog/2016/12/18/%5B%3F%5D-ge-nusde-hou-tai/" >Tweet</a>
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://xbox1994.github.io/blog/2016/12/18/nusde-hou-tai/" data-via="" data-counturl="http://xbox1994.github.io/blog/2016/12/18/nusde-hou-tai/" >Tweet</a>
   
   
   
@@ -245,7 +245,7 @@ stdout_path "#{@dir}log/unicorn.stdout.log"
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2016/12/18/%5B%3F%5D-ge-nusde-hou-tai/">一个NUS的后台</a>
+        <a href="/blog/2016/12/18/nusde-hou-tai/">NUS后台</a>
       </li>
     
   </ul>

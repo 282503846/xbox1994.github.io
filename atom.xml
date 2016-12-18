@@ -4,7 +4,7 @@
   <title><![CDATA[Tianyi's blog]]></title>
   <link href="http://xbox1994.github.io/atom.xml" rel="self"/>
   <link href="http://xbox1994.github.io/"/>
-  <updated>2016-12-18T17:06:35+08:00</updated>
+  <updated>2016-12-18T17:41:39+08:00</updated>
   <id>http://xbox1994.github.io/</id>
   <author>
     <name><![CDATA[Tianyi Wang]]></name>
@@ -14,10 +14,10 @@
 
   
   <entry>
-    <title type="html"><![CDATA[一个NUS的后台]]></title>
-    <link href="http://xbox1994.github.io/blog/2016/12/18/%5B%3F%5D-ge-nusde-hou-tai/"/>
+    <title type="html"><![CDATA[NUS后台]]></title>
+    <link href="http://xbox1994.github.io/blog/2016/12/18/nusde-hou-tai/"/>
     <updated>2016-12-18T16:12:24+08:00</updated>
-    <id>http://xbox1994.github.io/blog/2016/12/18/[?]-ge-nusde-hou-tai</id>
+    <id>http://xbox1994.github.io/blog/2016/12/18/nusde-hou-tai</id>
     <content type="html"><![CDATA[<p>Nginx Unicorn Sinatra<br/>
 研究一个后台架构,客户端发送的请求最开始是由是Nginx接收的,随后反向代理发送给Unicorn服务器的一个线程,接下来是Sinatra框架和Rack负责处理</p>
 
@@ -111,7 +111,7 @@ stdout_path "#{@dir}log/unicorn.stdout.log"
 </code></pre>
 
 <p>以前碰到过的一个问题：不启用nginx和unicorn时，当程序出错，代码中不处理错误而是抛出错误会导致服务器挂掉，似乎sinatra也没有管。
-答案：thin是单线程的，如果thin挂了一次就GG了，unicorn是多线程的，worker_processes有8个哦，如果超时会被kill掉再启动的，每个worker_process只能同时服务一个client，所以并发性能很差，然而thin不这样觉得</p>
+答：thin是单线程的，如果代码不够健壮导致thin挂了一次就无法恢复了，unicorn是多线程的，worker_processes默认有8个哦，如果超时会被kill掉再启动的，每个worker_process只能同时服务一个client，所以并发性能很差</p>
 
 <p>那么问题又来了，单线程如何实现高性能并发处理？
 <a href="https://github.com/eventmachine/eventmachine">https://github.com/eventmachine/eventmachine</a></p>
