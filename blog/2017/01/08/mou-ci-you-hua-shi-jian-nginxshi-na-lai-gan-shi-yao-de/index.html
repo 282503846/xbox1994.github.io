@@ -6,7 +6,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="baidu-site-verification" content="n3OMBUhKs3" />
-  <title>某次性能优化探索-Nginx是拿来干什么的 - Tianyi's blog</title>
+  <title>记一次性能优化探索-Nginx有什么用 - Tianyi's blog</title>
   <meta name="author" content="Tianyi Wang">
 
   
@@ -71,7 +71,7 @@
   
   <header>
     
-      <h1 class="entry-title">某次性能优化探索-Nginx是拿来干什么的</h1>
+      <h1 class="entry-title">记一次性能优化探索-Nginx有什么用</h1>
     
     
       <p class="meta">
@@ -93,9 +93,11 @@
 <!--more-->
 
 
-<h2>现象</h2>
+<h2>问题</h2>
 
-<p>本地环境开启的应用访问EC2上的某微服务速度慢,但在EC2环境开启的应用访问该微服务速度快.</p>
+<p>1.本地环境开启的应用访问EC2上的某微服务速度慢,但在EC2环境开启的应用访问该微服务速度快.</p>
+
+<p>2.本地环境加载某一个页面的过程中刷新,会很长时间内没有回应</p>
 
 <h2>区别</h2>
 
@@ -105,11 +107,14 @@
 
 <h2>猜测</h2>
 
-<p>首先我们觉得是网络环境的问题,因为我们同时发现上午网速确实比下午网速快,所以忍耐了很长时间没有下功夫在这方面,直到最近洲回来了,对这个访问速度感到很是愤怒..</p>
+<p>首先我们觉得是网络环境的问题,因为我们同时发现上午网速确实比下午网速快,所以忍耐了很长时间没有下功夫在这方面,直到最近洲回来了,对这个访问速度感到很是愤怒.
+在连接上VPN之后,发现速度什么的都不是问题,但是加载数据量较大的资源时还是比较慢</p>
 
 <h2>研究</h2>
 
-<p>所以我开始研究第二个区别,在家进行的本地测试三种环境如下图:<br/>
+<p>问题1:</p>
+
+<p>所以开始研究第二个区别,本地测试三种环境如下图:<br/>
 1)Thin<br/>
 <img src="/images/blog/home_thin.png" title="image" alt="images">
 2)Unicorn<br/>
@@ -122,14 +127,12 @@
 2.拿有Nginx的Unicorn服务器与没有Nginx的Unicorn服务器来说,数据量小的资源会稍慢一些,但数据量大的资源速度提升明显.<br/>
 3.Nginx将数据进行大幅度压缩,导致Size远小于Content</p>
 
-<p>在公司进行的本地测试三种环境如下图:<br/>
-1)Thin<br/>
-2)Unicorn<br/>
-3)Unicorn+Nginx</p>
+<p>问题2:</p>
 
-<p>与在家里的测试结果对比可以看出更多:
-1.网络环境是一个影响加载速率的因素
-2.</p>
+<p>经过测试,1)和2)都存在这个问题,但3)不存在,很明显是默认配置的服务器无法同时处理多个请求,可以通过
+1.&ndash;threaded开启Thin多线程模式<br/>
+2.Nginx与多进程模式Unicorn的配合<br/>
+均可以使得不用等待上一个请求结束而直接请求另一个服务器并立马得到回应.</p>
 
 <h2>服务器通信级别的原因</h2>
 
@@ -153,7 +156,7 @@
 <p>Using a reverse proxy server frees the application server from having to wait for users to interact with the web app and lets it concentrate on building pages for the reverse proxy server to send across the Internet<br/>
 <a href="https://www.nginx.com/blog/10-tips-for-10x-application-performance/">https://www.nginx.com/blog/10-tips-for-10x-application-performance/</a></p>
 
-<p>Nginx在其他方面也有好处,如直接返回静态文件,添加重定向与SSL证书,添加返回头,可参看这篇<a href="/blog/2016/12/18/nusde-hou-tai/">NUS后台</a></p>
+<p>Nginx在其他方面也有好处,如直接返回静态文件,添加重定向与SSL证书,添加返回头,可参看这篇[NUS后台]</p>
 
 <h3>少量请求+单机运行Nginx的坏处</h3>
 
@@ -168,6 +171,14 @@
 <p>上面是针对已有代码进行的服务器通信阶段进行的分析,在代码内部实现,依然还有很多加快加载速度的方式,对于我们这个例子来说的话:<br/>
 1.前台不应该加载2.5MB这样巨大的文件,除非万不得已.在前台做数据的展现即可,不需要先拿到全部数据后做数据的查询.<br/>
 2.代码级别存在很多批处理请求,但发送的时候是单条发送,建议使用批量处理对应的API</p>
+
+<h2>结论</h2>
+
+<p>1.网络问题是影响本地加载速度最大的因素,本地网络暂时难以改变,不连接/连接VPN+添加防火墙规则解决.<br/>
+2.代码层级可以做适当优化,解决大资源加载以及请求发送策略,将要解决.<br/>
+3.对于页面重新加载速度过慢的问题,使用多线程配置解决,已经解决.<br/>
+4.对于大资源加载问题,考虑使用Nginx压缩处理,grunt ddev已经解决.<br/>
+5.对于以后可能出现的请求数量过多问题采用Nginx+Unicorn负载均衡,已经解决.</p>
 </div>
 
 
@@ -185,6 +196,12 @@
 
 <time class='entry-date' datetime='2017-01-08T18:32:58+08:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>8</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>6:32 pm</span></time>
       
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hou-tai-ji-zhu/'>后台技术</a>
+  
+</span>
 
 
     </p>
@@ -216,7 +233,7 @@
   <ul id="recent_posts">
     
       <li class="post">
-        <a href="/blog/2017/01/08/mou-ci-you-hua-shi-jian-nginxshi-na-lai-gan-shi-yao-de/">某次性能优化探索-Nginx是拿来干什么的</a>
+        <a href="/blog/2017/01/08/mou-ci-you-hua-shi-jian-nginxshi-na-lai-gan-shi-yao-de/">记一次性能优化探索-Nginx有什么用</a>
       </li>
     
       <li class="post">
