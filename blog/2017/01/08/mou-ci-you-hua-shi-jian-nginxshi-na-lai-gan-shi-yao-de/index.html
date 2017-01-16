@@ -164,7 +164,7 @@
 
 <p>但是,在高并发情况下,才是Nginx的用武之地.如果1台实例无法处理成千上万个请求,那么就用集群吧,Nginx帮你负载均衡并添加一道隐形的安全防火墙,记住,一定要把Nginx放到一台独立的实例上而不要与其他服务共存,否则反而会影响整体处理速度.</p>
 
-<p>换句话说,使用Nginx的后台架构中的单个请求的处理速度可能会慢于不使用Nginx的后台架构,但在高并发环境下,不使用Nginx的后台可能会爆掉Out of memory..使用Nginx的后台依然坚挺</p>
+<p>换句话说,使用Nginx的后台架构中的单个请求的处理速度可能会慢于不使用Nginx的后台架构,但在高并发环境下,不使用Nginx的后台可能会爆掉Out of memory..使用Nginx的后台依然坚挺,为了系统的稳定性与负载均衡,使用Nginx是非常明智的选择.</p>
 
 <h2>代码级别的原因</h2>
 
@@ -220,6 +220,8 @@
         <a class="basic-alignment left" href="/blog/2016/12/31/learning-how-to-learn/" title="Previous Post: Learning how to Learn">&laquo; Learning how to Learn</a>
       
       
+        <a class="basic-alignment right" href="/blog/2017/01/16/sshdeng-lu-yuan-li-jian-jie/" title="Next Post: SSH登录原理简介">SSH登录原理简介 &raquo;</a>
+      
     </p>
   </footer>
 </article>
@@ -231,6 +233,10 @@
     <section>
   <h1>Recent Posts</h1>
   <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/sshdeng-lu-yuan-li-jian-jie/">SSH登录原理简介</a>
+      </li>
     
       <li class="post">
         <a href="/blog/2017/01/08/mou-ci-you-hua-shi-jian-nginxshi-na-lai-gan-shi-yao-de/">记一次性能优化探索-Nginx有什么用</a>

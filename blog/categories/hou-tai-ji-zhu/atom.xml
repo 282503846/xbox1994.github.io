@@ -4,7 +4,7 @@
   <title><![CDATA[Category: 后台技术 | Tianyi's blog]]></title>
   <link href="http://xbox1994.github.io/blog/categories/hou-tai-ji-zhu/atom.xml" rel="self"/>
   <link href="http://xbox1994.github.io/"/>
-  <updated>2017-01-09T21:43:45+08:00</updated>
+  <updated>2017-01-16T22:50:25+08:00</updated>
   <id>http://xbox1994.github.io/</id>
   <author>
     <name><![CDATA[Tianyi Wang]]></name>
@@ -12,6 +12,95 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[SSH登录原理简介]]></title>
+    <link href="http://xbox1994.github.io/blog/2017/01/16/sshdeng-lu-yuan-li-jian-jie/"/>
+    <updated>2017-01-16T22:19:46+08:00</updated>
+    <id>http://xbox1994.github.io/blog/2017/01/16/sshdeng-lu-yuan-li-jian-jie</id>
+    <content type="html"><![CDATA[<p>每次都用SSH登录,却没有关心过其中的原理,实在没脸用SSH</p>
+
+<!--more-->
+
+
+<h2>什么是SSH?</h2>
+
+<p>简单说，SSH是一种网络协议，用于计算机之间的加密登录。</p>
+
+<p>如果一个用户从本地计算机，使用SSH协议登录另一台远程计算机，我们就可以认为，这种登录是安全的，即使被中途截获，密码也不会泄露。</p>
+
+<p>最早的时候，互联网通信都是明文通信，一旦被截获，内容就暴露无疑。1995年，芬兰学者Tatu Ylonen设计了SSH协议，将登录信息全部加密，成为互联网安全的一个基本解决方案，迅速在全世界获得推广，目前已经成为Linux系统的标准配置。</p>
+
+<p>需要指出的是，SSH只是一种协议，存在多种实现，既有商业实现，也有开源实现。本文针对的实现是OpenSSH，它是自由软件，应用非常广泛。</p>
+
+<p>转自<a href="http://www.ruanyifeng.com/blog/2011/12/ssh_remote_login.html">http://www.ruanyifeng.com/blog/2011/12/ssh_remote_login.html</a></p>
+
+<h2>从用到懂</h2>
+
+<h3>用</h3>
+
+<p>  Secure Shell is a protocol used to securely log onto remote systems.
+  It can be used for logging or executing commands on a remote server.</p>
+
+<ul>
+<li><p>Connect to a remote server:<br/>
+ssh username@remote_host</p></li>
+<li><p>Connect to a remote server with a specific identity (private key):<br/>
+ssh -i path/to/key_file username@remote_host</p></li>
+<li><p>Connect to a remote server using a specific port:<br/>
+ssh username@remote_host -p 2222</p></li>
+<li><p>Run a command on a remote server:<br/>
+ssh remote_host command -with -flags</p></li>
+<li><p>SSH tunneling: Dynamic port forwarding (SOCKS proxy on localhost:9999):<br/>
+ssh -D 9999 -C username@remote_host</p></li>
+<li><p>SSH tunneling: Forward a specific port (localhost:9999 to slashdot.org:80):<br/>
+man ssh_config</p></li>
+<li><p>Enable the option to forward the authentication information to the remote machine (see man ssh_config for available options):<br/>
+ssh -o &ldquo;ForwardAgent=yes&rdquo; username@remote_host</p></li>
+</ul>
+
+
+<p>引用自tldr(与fuck一样是一辈子都要用的,实在是太好用了)</p>
+
+<p>具体配置SSH客户端的文件在
+  - ~/.ssh/config
+  - /etc/ssh/ssh_config</p>
+
+<p>ssh_config &ndash; OpenSSH SSH client configuration files,与SSH连接的配置项,如超时控制,连接策略</p>
+
+<h3>懂</h3>
+
+<p>SSH之所以能够保证安全，原因在于它采用了公钥加密。<br/>
+（1）远程主机收到用户的登录请求，把自己的公钥发给用户。<br/>
+（2）用户使用这个公钥，将登录密码加密后，发送回来。<br/>
+（3）远程主机用自己的私钥，解密登录密码，如果密码正确，就同意用户登录。</p>
+
+<p>SSH公钥登录：<br/>
+用户将自己的公钥储存在远程主机上。登录的时候，远程主机会向用户发送一段随机字符串，用户用自己的私钥加密后，再发回来。远程主机用事先储存的公钥进行解密，如果成功，就证明用户是可信的，直接允许登录shell，不再要求密码。</p>
+
+<p>SSH私钥登录：<br/>
+类似公钥登录，前提是将一个公钥存储在远程主机上，然后加一个i参数使用这个公钥对应的私钥去加密字符串发送给服务器</p>
+
+<h3>安全威胁</h3>
+
+<p>如果攻击者插在用户与远程主机之间（比如在公共的wifi区域），用伪造的公钥，获取用户的登录密码。再用这个密码登录远程主机，那么SSH的安全机制就荡然无存了,这就是中间人攻击,对于这个问题,SSH有自己的一套简易防范措施:</p>
+
+<p>第一次连接时会显示公钥指纹，跟对方确认后连接，一般是在官方网站上有对应指纹提供给用户验证,当选择yes,就会将该主机的公钥追加到该主机本地文件~/.ssh/known_hosts中。当再次连接该主机时，会比对这次连接的主机公钥与之前保存的公钥是否一致</p>
+
+<p>如果因为某种原因（服务器系统重装，服务器间IP地址交换，DHCP，虚拟机重建，中间人劫持），该IP地址的公钥改变了，当使用 SSH 连接的时候，会报错：Host key verification failed.</p>
+
+<p>如果自己可以确认对方域名是绝对安全可靠的,即使IP变动也是正常的话,那么可以使用如下方式省去验证步骤:<br/>
+只需要修改 /etc/ssh/ssh_config 文件，包含下列语句：<br/>
+Host *<br/>
+ StrictHostKeyChecking no<br/>
+或者在 ssh 命令行中用 -o 参数<br/>
+ssh  -o StrictHostKeyChecking=no  192.168.0.110</p>
+
+<p>如果设置了无口令 SSH 登录（即通过客户端公钥认证），就可以直接连接到远程主机。这是基于 SSH 协议的自动化任务常用的手段。</p>
+
+<p>部分引用自:<a href="http://www.worldhello.net/2010/04/08/1026.html">http://www.worldhello.net/2010/04/08/1026.html</a></p>
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[记一次性能优化探索-Nginx有什么用]]></title>
@@ -95,7 +184,7 @@
 
 <p>但是,在高并发情况下,才是Nginx的用武之地.如果1台实例无法处理成千上万个请求,那么就用集群吧,Nginx帮你负载均衡并添加一道隐形的安全防火墙,记住,一定要把Nginx放到一台独立的实例上而不要与其他服务共存,否则反而会影响整体处理速度.</p>
 
-<p>换句话说,使用Nginx的后台架构中的单个请求的处理速度可能会慢于不使用Nginx的后台架构,但在高并发环境下,不使用Nginx的后台可能会爆掉Out of memory..使用Nginx的后台依然坚挺</p>
+<p>换句话说,使用Nginx的后台架构中的单个请求的处理速度可能会慢于不使用Nginx的后台架构,但在高并发环境下,不使用Nginx的后台可能会爆掉Out of memory..使用Nginx的后台依然坚挺,为了系统的稳定性与负载均衡,使用Nginx是非常明智的选择.</p>
 
 <h2>代码级别的原因</h2>
 

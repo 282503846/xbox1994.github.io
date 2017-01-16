@@ -1,0 +1,285 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="baidu-site-verification" content="n3OMBUhKs3" />
+  <title>SSH登录原理简介 - Tianyi's blog</title>
+  <meta name="author" content="Tianyi Wang">
+
+  
+  <meta name="description" content="每次都用SSH登录,却没有关心过其中的原理,实在没脸用SSH 什么是SSH? 简单说，SSH是一种网络协议，用于计算机之间的加密登录。 如果一个用户从本地计算机，使用SSH协议登录另一台远程计算机，我们就可以认为，这种登录是安全的，即使被中途截获，密码也不会泄露。 最早的时候， &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://xbox1994.github.io/blog/2017/01/16/sshdeng-lu-yuan-li-jian-jie/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Tianyi's blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Tianyi's blog</a></h1>
+  
+    <h2>The corner of dream and reality</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="xbox1994.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">SSH登录原理简介</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-01-16T22:19:46+08:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>10:19 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>每次都用SSH登录,却没有关心过其中的原理,实在没脸用SSH</p>
+
+<!--more-->
+
+
+<h2>什么是SSH?</h2>
+
+<p>简单说，SSH是一种网络协议，用于计算机之间的加密登录。</p>
+
+<p>如果一个用户从本地计算机，使用SSH协议登录另一台远程计算机，我们就可以认为，这种登录是安全的，即使被中途截获，密码也不会泄露。</p>
+
+<p>最早的时候，互联网通信都是明文通信，一旦被截获，内容就暴露无疑。1995年，芬兰学者Tatu Ylonen设计了SSH协议，将登录信息全部加密，成为互联网安全的一个基本解决方案，迅速在全世界获得推广，目前已经成为Linux系统的标准配置。</p>
+
+<p>需要指出的是，SSH只是一种协议，存在多种实现，既有商业实现，也有开源实现。本文针对的实现是OpenSSH，它是自由软件，应用非常广泛。</p>
+
+<p>转自<a href="http://www.ruanyifeng.com/blog/2011/12/ssh_remote_login.html">http://www.ruanyifeng.com/blog/2011/12/ssh_remote_login.html</a></p>
+
+<h2>从用到懂</h2>
+
+<h3>用</h3>
+
+<p>  Secure Shell is a protocol used to securely log onto remote systems.
+  It can be used for logging or executing commands on a remote server.</p>
+
+<ul>
+<li><p>Connect to a remote server:<br/>
+ssh username@remote_host</p></li>
+<li><p>Connect to a remote server with a specific identity (private key):<br/>
+ssh -i path/to/key_file username@remote_host</p></li>
+<li><p>Connect to a remote server using a specific port:<br/>
+ssh username@remote_host -p 2222</p></li>
+<li><p>Run a command on a remote server:<br/>
+ssh remote_host command -with -flags</p></li>
+<li><p>SSH tunneling: Dynamic port forwarding (SOCKS proxy on localhost:9999):<br/>
+ssh -D 9999 -C username@remote_host</p></li>
+<li><p>SSH tunneling: Forward a specific port (localhost:9999 to slashdot.org:80):<br/>
+man ssh_config</p></li>
+<li><p>Enable the option to forward the authentication information to the remote machine (see man ssh_config for available options):<br/>
+ssh -o &ldquo;ForwardAgent=yes&rdquo; username@remote_host</p></li>
+</ul>
+
+
+<p>引用自tldr(与fuck一样是一辈子都要用的,实在是太好用了)</p>
+
+<p>具体配置SSH客户端的文件在
+  - ~/.ssh/config
+  - /etc/ssh/ssh_config</p>
+
+<p>ssh_config &ndash; OpenSSH SSH client configuration files,与SSH连接的配置项,如超时控制,连接策略</p>
+
+<h3>懂</h3>
+
+<p>SSH之所以能够保证安全，原因在于它采用了公钥加密。<br/>
+（1）远程主机收到用户的登录请求，把自己的公钥发给用户。<br/>
+（2）用户使用这个公钥，将登录密码加密后，发送回来。<br/>
+（3）远程主机用自己的私钥，解密登录密码，如果密码正确，就同意用户登录。</p>
+
+<p>SSH公钥登录：<br/>
+用户将自己的公钥储存在远程主机上。登录的时候，远程主机会向用户发送一段随机字符串，用户用自己的私钥加密后，再发回来。远程主机用事先储存的公钥进行解密，如果成功，就证明用户是可信的，直接允许登录shell，不再要求密码。</p>
+
+<p>SSH私钥登录：<br/>
+类似公钥登录，前提是将一个公钥存储在远程主机上，然后加一个i参数使用这个公钥对应的私钥去加密字符串发送给服务器</p>
+
+<h3>安全威胁</h3>
+
+<p>如果攻击者插在用户与远程主机之间（比如在公共的wifi区域），用伪造的公钥，获取用户的登录密码。再用这个密码登录远程主机，那么SSH的安全机制就荡然无存了,这就是中间人攻击,对于这个问题,SSH有自己的一套简易防范措施:</p>
+
+<p>第一次连接时会显示公钥指纹，跟对方确认后连接，一般是在官方网站上有对应指纹提供给用户验证,当选择yes,就会将该主机的公钥追加到该主机本地文件~/.ssh/known_hosts中。当再次连接该主机时，会比对这次连接的主机公钥与之前保存的公钥是否一致</p>
+
+<p>如果因为某种原因（服务器系统重装，服务器间IP地址交换，DHCP，虚拟机重建，中间人劫持），该IP地址的公钥改变了，当使用 SSH 连接的时候，会报错：Host key verification failed.</p>
+
+<p>如果自己可以确认对方域名是绝对安全可靠的,即使IP变动也是正常的话,那么可以使用如下方式省去验证步骤:<br/>
+只需要修改 /etc/ssh/ssh_config 文件，包含下列语句：<br/>
+Host *<br/>
+ StrictHostKeyChecking no<br/>
+或者在 ssh 命令行中用 -o 参数<br/>
+ssh  -o StrictHostKeyChecking=no  192.168.0.110</p>
+
+<p>如果设置了无口令 SSH 登录（即通过客户端公钥认证），就可以直接连接到远程主机。这是基于 SSH 协议的自动化任务常用的手段。</p>
+
+<p>部分引用自:<a href="http://www.worldhello.net/2010/04/08/1026.html">http://www.worldhello.net/2010/04/08/1026.html</a></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Tianyi Wang</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2017-01-16T22:19:46+08:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>16</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>10:19 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/hou-tai-ji-zhu/'>后台技术</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://xbox1994.github.io/blog/2017/01/16/sshdeng-lu-yuan-li-jian-jie/" data-via="" data-counturl="http://xbox1994.github.io/blog/2017/01/16/sshdeng-lu-yuan-li-jian-jie/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/01/08/mou-ci-you-hua-shi-jian-nginxshi-na-lai-gan-shi-yao-de/" title="Previous Post: 记一次性能优化探索-Nginx有什么用">&laquo; 记一次性能优化探索-Nginx有什么用</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/sshdeng-lu-yuan-li-jian-jie/">SSH登录原理简介</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/08/mou-ci-you-hua-shi-jian-nginxshi-na-lai-gan-shi-yao-de/">记一次性能优化探索-Nginx有什么用</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/12/31/learning-how-to-learn/">Learning How to Learn</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/12/25/ni-de-ming-zi-./">你的名字。</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/12/18/nusde-hou-tai/">NUS后台</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Tianyi Wang -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
