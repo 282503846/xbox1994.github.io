@@ -4,7 +4,7 @@
   <title><![CDATA[Tianyi's blog]]></title>
   <link href="http://xbox1994.github.io/atom.xml" rel="self"/>
   <link href="http://xbox1994.github.io/"/>
-  <updated>2017-01-16T22:53:12+08:00</updated>
+  <updated>2017-02-01T22:26:14+08:00</updated>
   <id>http://xbox1994.github.io/</id>
   <author>
     <name><![CDATA[Tianyi Wang]]></name>
@@ -12,6 +12,202 @@
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
+  
+  <entry>
+    <title type="html"><![CDATA[Docker in Docker]]></title>
+    <link href="http://xbox1994.github.io/blog/2017/01/29/docker-in-docker/"/>
+    <updated>2017-01-29T14:52:48+08:00</updated>
+    <id>http://xbox1994.github.io/blog/2017/01/29/docker-in-docker</id>
+    <content type="html"><![CDATA[<p>我想过一个非常有意思的东西:在docker里面运行docker,然后在docker里运行的docker中再运行一个docker,接着在docker里运行的docker里运行的docker中再开一个docker..接着迭代100次会发生什么</p>
+
+<!--more-->
+
+
+<p>结合这篇文章:<a href="https://jpetazzo.github.io/2015/09/03/do-not-use-docker-in-docker-for-ci/">https://jpetazzo.github.io/2015/09/03/do-not-use-docker-in-docker-for-ci/</a>
+以及自己的经验与实践总结出下文.</p>
+
+<p>&ldquo;If you want the short solution without the details, just scroll to the bottom of this article. ☺&rdquo;</p>
+
+<h2>Bad</h2>
+
+<p>如果你在docker中运行了docker,会导致一下问题:</p>
+
+<p>1.当你使用-privileged的时候会导致一个在内部docker与外部docker之间的安全配置无法合并的冲突,是关于LSM (Linux Security Modules)的</p>
+
+<p>2.外部docker运行在正常的文件系统中,但内部docker运行在写时拷贝的文件系统,会直接导致无法运行或者因为命名空间的问题影响其他container</p>
+
+<h2>Solution</h2>
+
+<p>其实基本上来说是不存在需要在docker中跑docker这种需求的,你想要的只是在docker中启动一个docker的container来运行你的程序,并不关心这个container在哪个docker进程中.下面提供一种方式可以让你在docker内部调用这个docker程序开启新的container帮助你完成工作:</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>docker run -v /var/run/docker.sock:/var/run/docker.sock ...</span></code></pre></td></tr></table></div></figure>
+
+
+<p>这样你程序所在的container中已经有权限访问docker的socket,因此可以用docker run启动同胞兄弟而不是子容器</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>/ # docker ps
+</span><span class='line'>➜  ~ docker run -v /var/run/docker.sock:/var/run/docker.sock -ti docker
+</span><span class='line'>CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+</span><span class='line'>8c84704e890e        docker              "docker-entrypoint..."   2 seconds ago       Up 1 second                             brave_lichterman
+</span><span class='line'>/ # docker run -v /var/run/docker.sock:/var/run/docker.sock -ti docker
+</span><span class='line'>/ # docker ps
+</span><span class='line'>CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS               NAMES
+</span><span class='line'>34dcf16326c2        docker              "docker-entrypoint..."   3 seconds ago       Up 2 seconds                            inspiring_mcnulty
+</span><span class='line'>8c84704e890e        docker              "docker-entrypoint..."   37 seconds ago      Up 36 seconds                           brave_lichterman</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Practice</h2>
+
+<p>使用上述Solution打包一个docker镜像</p>
+
+<h3>构建打包镜像的环境</h3>
+
+<p>网上实在没有找到包含docker+aws+packer的ubuntu docker镜像,以下是dockerfile</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>FROM ubuntu:14.04
+</span><span class='line'>
+</span><span class='line'># install docker
+</span><span class='line'>RUN apt-get update \
+</span><span class='line'>    && apt-get -y install ca-certificates \
+</span><span class='line'>      curl \
+</span><span class='line'>      openssl \
+</span><span class='line'>      unzip
+</span><span class='line'>
+</span><span class='line'>ENV DOCKER_BUCKET get.docker.com
+</span><span class='line'>ENV DOCKER_VERSION 1.13.0
+</span><span class='line'>ENV DOCKER_SHA256 fc194bb95640b1396283e5b23b5ff9d1b69a5e418b5b3d774f303a7642162ad6
+</span><span class='line'>
+</span><span class='line'>RUN set -x \
+</span><span class='line'>  && curl -fSL "https://${DOCKER_BUCKET}/builds/Linux/x86_64/docker-${DOCKER_VERSION}.tgz" -o docker.tgz \
+</span><span class='line'>  && echo "${DOCKER_SHA256} *docker.tgz" | sha256sum -c - \
+</span><span class='line'>  && tar -xzvf docker.tgz \
+</span><span class='line'>  && mv docker/* /usr/local/bin/ \
+</span><span class='line'>  && rmdir docker \
+</span><span class='line'>  && rm docker.tgz \
+</span><span class='line'>  && docker -v
+</span><span class='line'>
+</span><span class='line'># install aws
+</span><span class='line'>RUN apt-get install -y python-pip groff-base
+</span><span class='line'>RUN pip install awscli
+</span><span class='line'>
+</span><span class='line'># install packer
+</span><span class='line'>RUN curl -OL#\
+</span><span class='line'> https://releases.hashicorp.com/packer/0.12.2/packer_0.12.2_linux_amd64.zip &&\
+</span><span class='line'> unzip packer_0.12.2_linux_amd64.zip -d /usr/local/bin/
+</span><span class='line'>
+</span><span class='line'># copy file
+</span><span class='line'>WORKDIR /build
+</span><span class='line'>COPY infrastructure infrastructure
+</span><span class='line'>COPY pipeline/test/env_packet/packet4testEnv.sh /usr/local/bin
+</span><span class='line'>
+</span><span class='line'>ENTRYPOINT ["packet4testEnv.sh"]</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后添加打包脚本</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>echo "----------------------------------build packet environment"
+</span><span class='line'>docker build -t packer_aws_env -f ./pipeline/test/env_packet/Dockerfile .
+</span><span class='line'>echo "----------------------------------tag image"
+</span><span class='line'>docker tag packer_aws_env $ECR_REPOSITORY:sf-test-packet
+</span><span class='line'>echo "----------------------------------aws login"
+</span><span class='line'>aws ecr get-login | bash
+</span><span class='line'>echo "----------------------------------push to ecr"
+</span><span class='line'>docker push $ECR_REPOSITORY:sf-test-packet</span></code></pre></td></tr></table></div></figure>
+
+
+<h3>结合packer与ecr构建并上传镜像</h3>
+
+<p>外层docker环境</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>echo "----------------------------------pull docker image from ecr"
+</span><span class='line'>aws ecr get-login | bash
+</span><span class='line'>docker pull $ECR_REPOSITORY:sf-test-packet
+</span><span class='line'>
+</span><span class='line'>echo "----------------------------------run packer in docker and packet for test environment"
+</span><span class='line'>docker run --rm \
+</span><span class='line'> -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+</span><span class='line'> -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+</span><span class='line'> -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION \
+</span><span class='line'> -e ECR_LOGIN_SERVER=$ECR_LOGIN_SERVER \
+</span><span class='line'> -e ECR_REPOSITORY=$ECR_REPOSITORY \
+</span><span class='line'> $ECR_REPOSITORY:sf-test-packet
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>内层docker环境</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>"run_command": ["-d", "-i", "-t", "-v", "/var/run/docker.sock:/var/run/docker.sock", "", "/bin/bash"]</span></code></pre></td></tr></table></div></figure>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[SSH登录原理简介]]></title>
