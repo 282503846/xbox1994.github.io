@@ -1,0 +1,342 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="baidu-site-verification" content="n3OMBUhKs3" />
+  <title>Docker Port与iptables - Tianyi's blog</title>
+  <meta name="author" content="Tianyi Wang">
+
+  
+  <meta name="description" content="一个请求是如何从实体机传递到我们的应用的 iptables -> docker deamon -> docker bridge network -> docker container -> app 从iptables开始 参考:https://access.redhat.com/ &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://xbox1994.github.io/blog/2017/02/04/docker-portyu-iptables/">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Tianyi's blog" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="/javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="//fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href="//fonts.googleapis.com/css?family=PT+Sans:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Tianyi's blog</a></h1>
+  
+    <h2>The corner of dream and reality</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="sitesearch" value="xbox1994.github.io">
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Blog</a></li>
+  <li><a href="/blog/archives">Archives</a></li>
+  <li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Docker Port与iptables</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-02-04T16:57:08+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>4:57 pm</span></time>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>一个请求是如何从实体机传递到我们的应用的</p>
+
+<p>iptables -> docker deamon -> docker bridge network -> docker container -> app</p>
+
+<!--more-->
+
+
+<h2>从iptables开始</h2>
+
+<p>参考:<a href="https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/4/html/Security_Guide/s1-firewall-ipt-fwd.html">https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/4/html/Security_Guide/s1-firewall-ipt-fwd.html</a></p>
+
+<p>维基百科:iptables，一个运行在用户空间的应用软件，通过控制Linux内核netfilter模块，来管理网络数据包的流动与转送。</p>
+
+<p>因为公网IP的稀有与昂贵,公司一般只有一个公网IP,使用局域网与私有IP是访问公网资源的常用方式.防火墙与路由器可以将请求转发到内网机器上,也可以将传入路由到对应内网节点.这样的转发很危险,特别是攻击者伪装成内网节点.为了防止这种情况，iptables提供了可以实现的路由和转发策略，以防止网络资源的异常使用。</p>
+
+<h4>iptables的FORWARD策略</h4>
+
+<p>控制经过本节点的数据包路由的位置,例如转发到所有节点</p>
+
+<p>如果这样设置,在这个防火墙之后的所有节点都可以接收到数据包,相当于创建了一个路由规则,发送到这个路由的数据包都可以达到数据包内包含的预期节点,且都通过eth1设备</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>iptables -A FORWARD -i eth1 -j ACCEPT
+</span><span class='line'>iptables -A FORWARD -o eth1 -j ACCEPT</span></code></pre></td></tr></table></div></figure>
+
+
+<p>此时内网节点还不能正常访问外网,需要将内网IP伪装成路由IP来访问外网资源</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE</span></code></pre></td></tr></table></div></figure>
+
+
+<p>如果你想让一个内网节点成为外部可用的服务器,使用DNAT转发策略,将外部请求转发到改内网节点,Docker就是使用这个策略将请求转发到对应container中</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j DNAT --to 172.31.0.23:80</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>iptables结合docker deamon转发</h2>
+
+<p>参考:<a href="https://wiki.archlinux.org/index.php/Network_bridge_">https://wiki.archlinux.org/index.php/Network_bridge_</a>(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87) &lt;Docker进阶与实战></p>
+
+<h4>iptables -> docker deamon</h4>
+
+<p>Docker deamon在启动container时会在主机上采用iptables的DNAT策略,将iptables接受到的请求转发给改container所属的内网节点</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@ip-172-31-18-147:/home/ubuntu# docker run -itd -p 80:80 nginx
+</span><span class='line'>
+</span><span class='line'>root@ip-172-31-18-147:/home/ubuntu# docker ps
+</span><span class='line'>CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                         NAMES
+</span><span class='line'>660b89af3737        nginx               "nginx -g 'daemon ..."   3 seconds ago       Up 2 seconds        0.0.0.0:80-&gt;80/tcp, 443/tcp   amazing_dijkstra
+</span><span class='line'>r
+</span><span class='line'>
+</span><span class='line'>root@ip-172-31-18-147:/home/ubuntu# iptables -L
+</span><span class='line'>Chain FORWARD (policy DROP)
+</span><span class='line'>target     prot opt source               destination
+</span><span class='line'>DOCKER     all  --  anywhere             anywhere
+</span><span class='line'>Chain DOCKER (1 references)
+</span><span class='line'>target     prot opt source               destination
+</span><span class='line'>ACCEPT     tcp  --  anywhere             172.17.0.2           tcp dpt:http
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h4>docker deamon -> docker bridge network</h4>
+
+<p>Docker deamon启动时会在主机创建一个Linux网桥(网桥:网桥是一种软件配置，用于连结两个或更多个不同网段。网桥的行为就像是一台虚拟的网络交换机，工作于透明模式（即其他机器不必关注网桥的存在与否）。任意的真实物理设备（例如 eth0）和虚拟设备（例如 tap0）都可以连接到网桥。)(默认为docker0).</p>
+
+<p>容器启动时会创建一对veth pair,docker将一端挂在docker0网桥上,另一端放到容器的Network Namespace内,从而实现容器与主机通信的目的.
+<img src="/images/blog/docker_bridge_network.png" title="image" alt="images"></p>
+
+<h4>docker bridge network -> docker container</h4>
+
+<p>当前没有容器运行,网桥上没有网络接口,但默认分配了172.17.0.1/16的子网</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@ip-172-31-18-147:/home/ubuntu# ip addr show docker0
+</span><span class='line'>5: docker0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default
+</span><span class='line'>    link/ether 02:42:51:23:1f:10 brd ff:ff:ff:ff:ff:ff
+</span><span class='line'>    inet 172.17.0.1/16 scope global docker0
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>    inet6 fe80::42:51ff:fe23:1f10/64 scope link
+</span><span class='line'>       valid_lft forever preferred_lft forever</span></code></pre></td></tr></table></div></figure>
+
+
+<p>然后启动一个container测试,container会自动加入到该子网中</p>
+
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>root@ip-172-31-18-147:/home/ubuntu# docker run -it ubuntu:14.04
+</span><span class='line'>root@82c955281fdb:/# ip addr show
+</span><span class='line'>1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default
+</span><span class='line'>    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+</span><span class='line'>    inet 127.0.0.1/8 scope host lo
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>    inet6 ::1/128 scope host
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>931: eth0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UP group default
+</span><span class='line'>    link/ether 02:42:ac:11:00:02 brd ff:ff:ff:ff:ff:ff
+</span><span class='line'>    inet 172.17.0.2/16 scope global eth0
+</span><span class='line'>       valid_lft forever preferred_lft forever
+</span><span class='line'>    inet6 fe80::42:acff:fe11:2/64 scope link
+</span><span class='line'>       valid_lft forever preferred_lft forever</span></code></pre></td></tr></table></div></figure>
+
+
+<p><em><strong>综上所述,Docker会为我们创建一个iptables转发规则,将从外界接收到的请求转发到Docker在启动container时创建的子网中的对应节点</strong></em></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Tianyi Wang</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2017-02-04T16:57:08+08:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>4</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>4:57 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/devops/'>devops</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://xbox1994.github.io/blog/2017/02/04/docker-portyu-iptables/" data-via="" data-counturl="http://xbox1994.github.io/blog/2017/02/04/docker-portyu-iptables/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">
+      
+        <a class="basic-alignment left" href="/blog/2017/01/29/docker-in-docker/" title="Previous Post: Docker in Docker">&laquo; Docker in Docker</a>
+      
+      
+    </p>
+  </footer>
+</article>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/02/04/docker-portyu-iptables/">Docker Port与iptables</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/29/docker-in-docker/">Docker in Docker</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/16/sshdeng-lu-yuan-li-jian-jie/">SSH登录原理简介</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/08/mou-ci-you-hua-shi-jian-nginxshi-na-lai-gan-shi-yao-de/">记一次性能优化探索-Nginx有什么用</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/12/31/learning-how-to-learn/">Learning How to Learn</a>
+      </li>
+    
+  </ul>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2017 - Tianyi Wang -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+</body>
+</html>
